@@ -145,7 +145,18 @@ every time?"
                         (concat enclosing-scope "." function-name)
                       enclosing-scope)
                   function-name))
-            function-name)))))
+            function-name)) "")))
+
+
+(defun unittest-get-class-name ()
+  (car
+   (split-string (unittest-get-class-function-name) "\\.")))
+
+
+(defun concat-module-class-function (module class-function)
+  (if (string= "" class-function)
+      module
+    (concat module "." class-function)))
 
 
 (define-compilation-mode unittest-output-mode "unittest"
@@ -226,10 +237,26 @@ every time?"
 test, the test case will be executed. If point is not in a test,
 all tests for the module are run."
   (interactive "P")
-  (let ((python-arg (unittest-shell-exec-quote-filename (unittest-get-test-file-name))))
-    (let ((test-cmd (verbose-cmd (concat unittest-python-command " " python-arg) verbose)))
-      (run-in-compile
-       (concat test-cmd " " (unittest-get-class-function-name))))))
+  (let* ((package (unittest-current-module t))
+	 (test (unittest-get-class-function-name))
+	 (test-under-point
+          (concat-module-class-function package test)))
+    (run-python
+     (concat (verbose-cmd unittest-run-tests-command verbose)
+             " " test-under-point))))
+
+
+(defun unittest-run-single-class (verbose)
+  "Executes the test under point. If point is not in a single
+test, the test case will be executed. If point is not in a test,
+all tests for the module are run. XXX update this"
+  (interactive "P")
+  (let* ((package (unittest-current-module t))
+	 (class (unittest-get-class-name))
+	 (testcase-under-point (concat package "." class)))
+    (run-python
+     (concat (verbose-cmd unittest-run-tests-command verbose)
+	     " " testcase-under-point))))
 
 
 (defun unittest-setup-py-directory ()
@@ -371,6 +398,7 @@ some-package (as determined by a setup.py file)"
     (define-key pmap "l" 'unittest-execute-last-module)
     (define-key pmap "f" 'unittest-run-test-case)
     (define-key pmap "s" 'unittest-run-single-test)
+    (define-key pmap "c" 'unittest-run-single-class)
     (define-key pmap "t" 'unittest-run-tests-top-level)
     (define-key pmap "d" 'unittest-run-tests-in-current-package)
     (define-key map (kbd "C-x t") pmap)
